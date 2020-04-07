@@ -6,7 +6,7 @@
  * (c) Marco Licciardi-Mues <info@sunset-beat.de>
  */
 
-namespace sunsetbeat\myw;
+namespace Sunsetbeat\Myw;
 
 /**
  * Run CMS
@@ -15,7 +15,7 @@ namespace sunsetbeat\myw;
  *
  * @author Marco Licciardi-Mues <info@sunset-beat.de>
  */
-class myw
+class Myw
 {
     /**
      * @param mixed  $value
