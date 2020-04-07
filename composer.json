@@ -1,9 +1,12 @@
 {
     "name": "sunsetbeat/myw",
-    "description": "Assertions to validate method input/output with nice error messages.",
+    "description": "Manage your web.",
     "keywords": [
-        "cms"
+        "cms",
+        "sunset",
+        "pixel"
     ],
+    "license": "MIT",
     "authors": [
         {
             "name": "Marco Licciardi-Mues",
@@ -11,22 +14,23 @@
         }
     ],
     "require": {
-        "php": "^7.1"
+        "php": "^5.3.3 || ^7.0",
+        "symfony/polyfill-ctype": "^1.8"
     },
     "require-dev": {
-        "phpunit/phpunit": "^7.5.13"
+        "phpunit/phpunit": "^4.8.36 || ^7.5.13"
     },
     "conflict": {
-        "vimeo/psalm": "<3.9.1"
+        "vimeo/psalm": "<3.6.0"
     },
     "autoload": {
         "psr-4": {
-            "sunsetbeat\\myw\\": "src/"
+            "Sunsetbeat\\myw\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "sunsetbeat\\myw\\tests\\": "tests/"
+            "Sunsetbeat\\myw\\Tests\\": "tests/"
         }
     }
 }
