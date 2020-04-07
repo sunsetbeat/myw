@@ -4,9 +4,6 @@
  * This file is part of the sunset-beat\myw package.
  *
  * (c) Marco Licciardi-Mues <info@sunset-beat.de>
- *
- * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
  */
 
 namespace sunsetbeat\myw;
