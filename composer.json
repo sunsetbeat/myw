@@ -1,0 +1,31 @@
+{
+    "name": "sunset-beat/myw",
+    "description": "Assertions to validate method input/output with nice error messages.",
+    "keywords": [
+        "cms"
+    ],
+    "authors": [
+        {
+            "name": "Marco Licciardi-Mues",
+            "email": "info@sunset-beat.de"
+        }
+    ],
+    "require": {
+        "php": "^7.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^7.5.13"
+    },
+    "conflict": {
+    },
+    "autoload": {
+        "psr-4": {
+            "sunset-beat\\myw\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "sunset-beat\\myw\\Tests\\": "tests/"
+        }
+    }
+}
