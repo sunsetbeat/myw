@@ -29,10 +29,7 @@ class myw
     public static function string($value, $message = '')
     {
         if (!\is_string($value)) {
-            static::reportInvalidArgument(\sprintf(
-                $message ?: 'Expected a string. Got: %s',
-                static::typeToString($value)
-            ));
         }
     }
 
+}
