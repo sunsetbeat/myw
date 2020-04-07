@@ -22,14 +22,14 @@ class myw
 {
     /**
      * @param mixed  $value
-     * @param string $message
      *
+     * @return string
+     * 
      * @throws InvalidArgumentException
      */
-    public static function string($value, $message = '')
+    public static function string($value)
     {
-        if (!\is_string($value)) {
-        }
+        return (string) $value;
     }
 
 }

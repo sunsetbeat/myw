@@ -1,5 +1,5 @@
 {
-    "name": "sunset-beat/myw",
+    "name": "sunsetbeat/myw",
     "description": "Assertions to validate method input/output with nice error messages.",
     "keywords": [
         "cms"
@@ -17,15 +17,16 @@
         "phpunit/phpunit": "^7.5.13"
     },
     "conflict": {
+        "vimeo/psalm": "<3.9.1"
     },
     "autoload": {
         "psr-4": {
-            "sunset-beat\\myw\\": "src/"
+            "sunsetbeat\\myw\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "sunset-beat\\myw\\Tests\\": "tests/"
+            "sunsetbeat\\myw\\tests\\": "tests/"
         }
     }
 }
