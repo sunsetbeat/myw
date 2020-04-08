@@ -1,6 +1,6 @@
 <?php
 
-namespace sunsetbeat\myw\Controller;
+namespace Sunsetbeat\Myw\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Annotation\Route;
@@ -8,7 +8,7 @@ use Symfony\Component\Routing\Annotation\Route;
 class AuthController extends AbstractController
 {
     /**
-     * @Route("/myw/auth", name="index")
+     * @Route("/myw/auth", name="myw_auth")
      */
     public function index()
     {

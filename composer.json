@@ -24,7 +24,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Sunsetbeat\\myw\\": "src/"
+            "Sunsetbeat\\myw\\": ""
         }
     },
     "autoload-dev": {
