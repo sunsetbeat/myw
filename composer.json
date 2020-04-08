@@ -24,12 +24,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Sunsetbeat\\myw\\": ""
+            "Sunsetbeat\\Myw\\": ""
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Sunsetbeat\\myw\\Tests\\": "tests/"
+            "Sunsetbeat\\Myw\\Tests\\": "tests/"
         }
     }
 }
