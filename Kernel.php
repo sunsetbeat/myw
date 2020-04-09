@@ -2,65 +2,228 @@
 
 namespace Sunsetbeat\Myw;
 
-use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
-use Symfony\Component\Config\Loader\LoaderInterface;
-use Symfony\Component\Config\Resource\FileResource;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\HttpKernel\Kernel as BaseKernel;
-use Symfony\Component\Routing\RouteCollectionBuilder;
+use Composer\Autoload\ClassLoader;
 
-class Kernel extends BaseKernel
+use PackageVersions\Versions;
+
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\HttpCache\HttpCache;
+use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Component\HttpKernel\TerminableInterface;
+
+// use Shopware\Core\Profiling\Doctrine\DebugStack;
+use Doctrine\DBAL\Logging\DebugStack;
+
+use Doctrine\DBAL\Configuration;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ConnectionException;
+use Doctrine\DBAL\DriverManager;
+use stdClass;
+
+class Kernel 
 {
-    use MicroKernelTrait;
+    /**
+     * @var Connection|null
+     */
+    protected static $connection;
 
-    private const CONFIG_EXTS = '.{php,xml,yaml,yml}';
+    /**
+     * @var string
+     */
+    protected static $kernelClass = Kernel::class;
 
+    /**
+     * @var ClassLoader|null
+     */
+    protected $classLoader;
 
-    public function __construct(
-        string $environment,
-        bool $debug,
-        KernelPluginLoader $pluginLoader,
-        ?string $cacheId = null,
-        ?string $version = self::SHOPWARE_FALLBACK_VERSION
-    ) {
-        $cacheId = $cacheId ?? $environment;
-        parent::__construct($environment, $debug, $pluginLoader, $cacheId, $version);
+    /**
+     * @var string
+     */
+    protected $environment;
+
+    /**
+     * @var bool
+     */
+    protected $debug;
+
+    /**
+     * @var string
+     */
+    protected $projectDir;
+
+    /**
+     * @var KernelPluginLoader|null
+     */
+    protected $pluginLoader;
+
+    /**
+     * @var KernelInterface|null
+     */
+    protected $kernel;
+
+    public function __construct(string $environment, bool $debug, ?ClassLoader $classLoader = null)
+    {
+        $this->classLoader = $classLoader;
+        $this->environment = $environment;
+        $this->debug = $debug;
     }
 
-    public function registerBundles(): iterable
+    public function handle(Request $request, $type = HttpKernelInterface::MASTER_REQUEST, $catch = true): HttpKernelResult
     {
-        $contents = require $this->getProjectDir().'/config/bundles.php';
-        foreach ($contents as $class => $envs) {
-            if ($envs[$this->environment] ?? $envs['all'] ?? false) {
-                yield new $class();
-            }
+        try {
+            return $this->doHandle($request, (int) $type, (bool) $catch);
+        } catch (ConnectionException $e) {
+            $connection = self::getConnection();
+
+            $message = str_replace([$connection->getParams()['password'], $connection->getParams()['user']], '******', $e->getMessage());
+
+            throw new \RuntimeException(sprintf('Could not connect to database. Message from SQL Server: %s', $message));
         }
     }
 
-    public function getProjectDir(): string
+    public function getKernel(): KernelInterface
     {
-        return \dirname(__DIR__);
+        return $this->createKernel();
     }
 
-    protected function configureContainer(ContainerBuilder $container, LoaderInterface $loader): void
+    /**
+     * Allows to switch the plugin loading.
+     */
+    public function setPluginLoader(KernelPluginLoader $pluginLoader): void
     {
-        $container->addResource(new FileResource($this->getProjectDir().'/config/bundles.php'));
-        $container->setParameter('container.dumper.inline_class_loader', \PHP_VERSION_ID < 70400 || $this->debug);
-        $container->setParameter('container.dumper.inline_factories', true);
-        $confDir = $this->getProjectDir().'/config';
-
-        $loader->load($confDir.'/{packages}/*'.self::CONFIG_EXTS, 'glob');
-        $loader->load($confDir.'/{packages}/'.$this->environment.'/*'.self::CONFIG_EXTS, 'glob');
-        $loader->load($confDir.'/{services}'.self::CONFIG_EXTS, 'glob');
-        $loader->load($confDir.'/{services}_'.$this->environment.self::CONFIG_EXTS, 'glob');
+        $this->pluginLoader = $pluginLoader;
     }
 
-    protected function configureRoutes(RouteCollectionBuilder $routes): void
+    public static function getConnection(): Connection
     {
-        $confDir = $this->getProjectDir().'/config';
+        if (self::$connection) {
+            return self::$connection;
+        }
 
-        $routes->import($confDir.'/{routes}/'.$this->environment.'/*'.self::CONFIG_EXTS, '/', 'glob');
-        $routes->import($confDir.'/{routes}/*'.self::CONFIG_EXTS, '/', 'glob');
-        $routes->import($confDir.'/{routes}'.self::CONFIG_EXTS, '/', 'glob');
+        $url = $_ENV['DATABASE_URL']
+            ?? $_SERVER['DATABASE_URL']
+            ?? getenv('DATABASE_URL');
+
+        $parameters = [
+            'url' => $url,
+            'charset' => 'utf8mb4',
+        ];
+
+        self::$connection = DriverManager::getConnection($parameters, new Configuration());
+
+        return self::$connection;
+    }
+
+    public function terminate(Request $request, Response $response): void
+    {
+        if (!$this->kernel instanceof TerminableInterface) {
+            return;
+        }
+
+        $this->kernel->terminate($request, $response);
+    }
+
+    private function doHandle(Request $request, int $type, bool $catch): HttpKernelResult
+    {
+        // create core kernel which contains bootstrapping for plugins etc.
+        $kernel = $this->createKernel();
+        $kernel->boot();
+
+        $container = $kernel->getContainer();
+
+        // transform request to resolve seo urls and detect sales channel
+        $transformed = $container
+            ->get(RequestTransformerInterface::class)
+            ->transform($request);
+
+        // check for http caching
+        $enabled = $container->getParameter('sunsetbeat.http.cache.enabled');
+        if ($enabled) {
+            $kernel = new HttpCache($kernel, $container->get(CacheStore::class), null, ['debug' => $this->debug]);
+        }
+
+        $response = $kernel->handle($transformed, $type, $catch);
+
+        // fire event to trigger runtime events like seo url headers
+        $event = new BeforeSendResponseEvent($transformed, $response);
+        $container->get('event_dispatcher')->dispatch($event);
+
+        return new HttpKernelResult($transformed, $event->getResponse());
+    }
+
+    private function createKernel(): KernelInterface
+    {
+        if ($this->kernel !== null) {
+            return $this->kernel;
+        }
+
+        $versions = Versions::VERSIONS;
+        if (isset($versions['sunsetbeat/myw'])) {
+            $sunsetbeatVersion = Versions::getVersion('sunsetbeat/myw');
+        } else {
+            $sunsetbeatVersion = Versions::getVersion('sunsetbeat/platform');
+        }
+
+        $connection = self::getConnection();
+
+        if ($this->environment === 'dev') {
+            $connection->getConfiguration()->setSQLLogger(new DebugStack());
+        }
+
+        $pluginLoader = $this->createPluginLoader($connection);
+
+        // $cacheId = (new CacheIdLoader($connection))->load();
+        $cacheId = 1;
+
+        return $this->kernel = new static::$kernelClass(
+            $this->environment,
+            $this->debug,
+            $pluginLoader,
+            $cacheId,
+            $sunsetbeatVersion,
+            $connection,
+            $this->getProjectDir()
+        );
+    }
+
+    private function getProjectDir()
+    {
+        if ($this->projectDir === null) {
+            $r = new \ReflectionObject($this);
+
+            if (!file_exists($dir = $r->getFileName())) {
+                throw new \LogicException(sprintf('Cannot auto-detect project dir for kernel of class "%s".', $r->name));
+            }
+
+            $dir = $rootDir = \dirname($dir);
+            while (!file_exists($dir . '/composer.json')) {
+                if ($dir === \dirname($dir)) {
+                    return $this->projectDir = $rootDir;
+                }
+                $dir = \dirname($dir);
+            }
+            $this->projectDir = $dir;
+        }
+
+        return $this->projectDir;
+    }
+
+    private function createPluginLoader(Connection $connection)
+    {
+        if ($this->pluginLoader) {
+            return $this->pluginLoader;
+        }
+
+        if (!$this->classLoader) {
+            throw new \RuntimeException('No plugin loader and no class loader provided');
+        }
+
+        // $this->pluginLoader = new DbalKernelPluginLoader($this->classLoader, null, $connection);
+        $this->pluginLoader = new \stdClass;
+
+        return $this->pluginLoader;
     }
 }
