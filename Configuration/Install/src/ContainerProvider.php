@@ -29,7 +29,7 @@ class ContainerProvider implements ServiceProviderInterface
         $container['config'] = $this->config;
         $container['install.language'] = '';
 
-        $container['shopware.version'] = static function () {
+        $container['myw.version'] = static function () {
             $version = null;
             $versionFile = SW_PATH . '/public/recovery/install/data/version';
             if (is_readable($versionFile)) {
@@ -71,7 +71,7 @@ class ContainerProvider implements ServiceProviderInterface
             if (file_exists(SW_PATH . '/platform/src/Core/schema.sql')) {
                 $dumpFile = SW_PATH . '/platform/src/Core/schema.sql';
             } else {
-                $dumpFile = SW_PATH . '/vendor/shopware/core/schema.sql';
+                $dumpFile = SW_PATH . '/vendor/myw/core/schema.sql';
             }
 
             return new DumpIterator($dumpFile);
@@ -134,12 +134,12 @@ class ContainerProvider implements ServiceProviderInterface
             );
         };
 
-        $container['shopware.notify'] = static function ($c) {
+        $container['myw.notify'] = static function ($c) {
             return new Notification(
                 $c['config']['api.endpoint'],
                 $c['uniqueid.generator']->getUniqueId(),
                 $c['http-client'],
-                $c['shopware.version']
+                $c['myw.version']
             );
         };
 
@@ -162,10 +162,10 @@ class ContainerProvider implements ServiceProviderInterface
                 ];
             } else {
                 $bundles = [
-                    'Core' => SW_PATH . '/vendor/shopware/core/Migration',
-                    'Storefront' => SW_PATH . '/vendor/shopware/storefront/Migration',
-                    'Elasticsearch' => SW_PATH . '/vendor/shopware/elasticsearch/Migration',
-                    'Administartion' => SW_PATH . '/vendor/shopware/administration/Migration',
+                    'Core' => SW_PATH . '/vendor/myw/core/Migration',
+                    'Storefront' => SW_PATH . '/vendor/myw/storefront/Migration',
+                    'Elasticsearch' => SW_PATH . '/vendor/myw/elasticsearch/Migration',
+                    'Administartion' => SW_PATH . '/vendor/myw/administration/Migration',
                 ];
             }
 
@@ -189,7 +189,7 @@ class ContainerProvider implements ServiceProviderInterface
             $paths = [];
 
             foreach ($c['migration.paths'] as $path) {
-                $paths[sprintf('Shopware\\%s\\Migration', $path['name'])] = $path['path'];
+                $paths[sprintf('Sunsetbeat\\%s\\Migration', $path['name'])] = $path['path'];
             }
 
             return new MigrationCollection($paths);

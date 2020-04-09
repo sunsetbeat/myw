@@ -6,7 +6,7 @@ use Psr\Http\Message\ServerRequestInterface;
 
 use Slim\Container;
 
-use Sunsetbeat\Myw\Configuration\Install\ContainerProvider;
+use Sunsetbeat\Myw\configuration\install\ContainerProvider;
 
 if (empty($_SESSION)) {
     $sessionPath = str_replace('index.php', '', $_SERVER['SCRIPT_NAME']);
@@ -18,7 +18,6 @@ if (empty($_SESSION)) {
 $config = require __DIR__ . '/../config/production.php';
 $container = new Container();
 $container->register(new ContainerProvider($config));
-echo "<pre>"; var_dump($container); exit;
 
 /** @var \Slim\App $app */
 $app = $container->offsetGet('slim.app');
@@ -48,18 +47,6 @@ $localeForLanguage = static function (string $language): string {
             return 'de-DE';
         case 'en':
             return 'en-GB';
-        case 'nl':
-            return 'nl-NL';
-        case 'it':
-            return 'it-IT';
-        case 'fr':
-            return 'fr-FR';
-        case 'es':
-            return 'es-ES';
-        case 'pt':
-            return 'pt-PT';
-        case 'pl':
-            return 'pl-PL';
     }
 
     return strtolower($language) . '_' . strtoupper($language);
@@ -122,7 +109,7 @@ $app->add(function (ServerRequestInterface $request, ResponseInterface $response
 
     $viewAttributes = [];
 
-    $viewAttributes['version'] = $container->offsetGet('shopware.version');
+    $viewAttributes['version'] = $container->offsetGet('myw.version');
     $viewAttributes['t'] = $container->offsetGet('translation.service');
     $viewAttributes['menuHelper'] = $container->offsetGet('menu.helper');
     $viewAttributes['languages'] = $allowedLanguages;
@@ -143,7 +130,7 @@ $app->any('/', function (ServerRequestInterface $request, ResponseInterface $res
     $menuHelper = $container->offsetGet('menu.helper');
     $menuHelper->setCurrent('language-selection');
 
-    $container['shopware.notify']->doTrackEvent('Installer started');
+    $container['myw.notify']->doTrackEvent('Installer started');
 
     $viewVars = [
         'languages' => $container->offsetGet('config')['languages'],
@@ -157,9 +144,9 @@ $app->any('/requirements/', function (ServerRequestInterface $request, ResponseI
     $menuHelper->setCurrent('requirements');
 
     // Check system requirements
-    /** @var Requirements $shopwareSystemCheck */
-    $shopwareSystemCheck = $container->offsetGet('install.requirements');
-    $systemCheckResults = $shopwareSystemCheck->toArray();
+    /** @var Requirements $mywSystemCheck */
+    $mywSystemCheck = $container->offsetGet('install.requirements');
+    $systemCheckResults = $mywSystemCheck->toArray();
 
     $viewAttributes = [];
 
@@ -169,13 +156,13 @@ $app->any('/requirements/', function (ServerRequestInterface $request, ResponseI
     $viewAttributes['phpVersionNotSupported'] = $systemCheckResults['phpVersionNotSupported'];
 
     // Check file & directory permissions
-    /** @var RequirementsPath $shopwareSystemCheckPath */
-    $shopwareSystemCheckPath = $container->offsetGet('install.requirementsPath');
-    $shopwareSystemCheckPathResult = $shopwareSystemCheckPath->check();
+    /** @var RequirementsPath $mywSystemCheckPath */
+    $mywSystemCheckPath = $container->offsetGet('install.requirementsPath');
+    $mywSystemCheckPathResult = $mywSystemCheckPath->check();
 
     $viewAttributes['pathError'] = false;
 
-    if ($shopwareSystemCheckPathResult->hasError()) {
+    if ($mywSystemCheckPathResult->hasError()) {
         $viewAttributes['error'] = true;
         $viewAttributes['pathError'] = true;
     }
@@ -185,7 +172,7 @@ $app->any('/requirements/', function (ServerRequestInterface $request, ResponseI
     }
 
     $viewAttributes['systemCheckResults'] = $systemCheckResults['checks'];
-    $viewAttributes['systemCheckResultsWritePermissions'] = $shopwareSystemCheckPathResult->toArray();
+    $viewAttributes['systemCheckResultsWritePermissions'] = $mywSystemCheckPathResult->toArray();
 
     return $this->renderer->render($response, 'requirements.php', $viewAttributes);
 })->setName('requirements');
@@ -231,7 +218,7 @@ $app->any('/database-configuration/', function (ServerRequestInterface $request,
     $menuHelper = $container->offsetGet('menu.helper');
     $menuHelper->setCurrent('database-configuration');
 
-    /** @var \Shopware\Recovery\Install\Service\TranslationService $translationService */
+    /** @var \Sunsetbeat\Recovery\Install\Service\TranslationService $translationService */
     $translationService = $container->offsetGet('translation.service');
 
     if ($request->getMethod() !== 'POST') {
@@ -318,7 +305,7 @@ $app->any('/database-import/', function (ServerRequestInterface $request, Respon
     $menuHelper = $container->offsetGet('menu.helper');
     $menuHelper->setCurrent('database-import');
 
-    /** @var \Shopware\Recovery\Install\Service\TranslationService $translationService */
+    /** @var \Sunsetbeat\Recovery\Install\Service\TranslationService $translationService */
     $translationService = $container->offsetGet('translation.service');
 
     if ($request->getMethod() === 'POST') {
@@ -343,7 +330,7 @@ $app->any('/configuration/', function (ServerRequestInterface $request, Response
     $menuHelper = $container->offsetGet('menu.helper');
     $menuHelper->setCurrent('configuration');
 
-    /** @var \Shopware\Recovery\Install\Service\TranslationService $translationService */
+    /** @var \Sunsetbeat\Recovery\Install\Service\TranslationService $translationService */
     $translationService = $container->offsetGet('translation.service');
 
     try {
@@ -433,7 +420,7 @@ $app->any('/finish/', function (ServerRequestInterface $request, ResponseInterfa
 
     $basepath = str_replace('/recovery/install/index.php', '', $_SERVER['SCRIPT_NAME']);
 
-    /** @var \Shopware\Recovery\Common\SystemLocker $systemLocker */
+    /** @var \Sunsetbeat\Recovery\Common\SystemLocker $systemLocker */
     $systemLocker = $container->offsetGet('system.locker');
     $systemLocker();
 
@@ -442,7 +429,7 @@ $app->any('/finish/', function (ServerRequestInterface $request, ResponseInterfa
         'method' => 'installer',
     ];
 
-    $container->offsetGet('shopware.notify')->doTrackEvent('Installer finished', $additionalInformation);
+    $container->offsetGet('myw.notify')->doTrackEvent('Installer finished', $additionalInformation);
 
     $schema = 'http';
     // This is for supporting Apache 2.2
@@ -464,7 +451,7 @@ $app->any('/finish/', function (ServerRequestInterface $request, ResponseInterfa
 
     session_destroy();
 
-    /** @var \Shopware\Recovery\Common\HttpClient\Client $client */
+    /** @var \Sunsetbeat\Recovery\Common\HttpClient\Client $client */
     $client = $container->offsetGet('http-client');
     $loginResponse = $client->post($url, $data, ['Content-Type: application/json']);
 
@@ -496,7 +483,7 @@ $app->any('/database-import/importDatabase', function (ServerRequestInterface $r
     $identifiers = array_column($container->get('migration.paths'), 'name');
 
     foreach ($identifiers as &$identifier) {
-        $identifier = sprintf('Shopware\\%s\\Migration', $identifier);
+        $identifier = sprintf('Sunsetbeat\\%s\\Migration', $identifier);
     }
     unset($identifier);
 
@@ -509,7 +496,7 @@ $app->any('/database-import/importDatabase', function (ServerRequestInterface $r
         /** @var \PDO $db */
         $db = $container->offsetGet('db');
 
-        /* @var \Shopware\Recovery\Common\DumpIterator $dumpIterator */
+        /* @var \Sunsetbeat\Recovery\Common\DumpIterator $dumpIterator */
         foreach ($container['database.dump_iterator'] as $query) {
             try {
                 $db->query($query);
